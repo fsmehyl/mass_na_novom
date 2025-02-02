@@ -44,7 +44,7 @@ class _CreateFormPageState extends State<CreateFormPage> {
       final file = File(filePath);
       await file.writeAsString(xmlString);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Formulár uložený: $filePath')),
+        SnackBar(content: Text('Formulár úspešne uložený: $filePath')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
