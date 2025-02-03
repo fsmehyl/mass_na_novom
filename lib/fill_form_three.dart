@@ -19,7 +19,6 @@ class _FillFormThreeState extends State<FillFormThree> {
   Widget build(BuildContext context) {
     return FormBuilderPackage(
       xmlFilePath: 'assets/xml_forms/form_three.xml', // Uveďte cestu k vášmu XML súboru
-      formTitle: 'RPDD10R', // Nastavte názov formulára
     );
   }
 }

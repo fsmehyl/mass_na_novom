@@ -6,12 +6,10 @@ import 'graph.dart';
 
 class FormBuilderPackage extends StatefulWidget {
   final String xmlFilePath;
-  final String formTitle;
 
   const FormBuilderPackage({
     super.key,
     required this.xmlFilePath,
-    required this.formTitle,
   });
 
   @override
@@ -22,6 +20,7 @@ class _FormBuilderPackageState extends State<FormBuilderPackage> {
   final _formKey = GlobalKey<FormBuilderState>();
   List<Map<String, dynamic>> questions = [];
   Map<String, dynamic> answers = {};
+  String _formTitle = 'Načítava sa...';
 
   @override
   void initState() {
@@ -33,6 +32,10 @@ class _FormBuilderPackageState extends State<FormBuilderPackage> {
     final data = await rootBundle.loadString(widget.xmlFilePath);
     final document = xml.XmlDocument.parse(data);
     final form = document.findAllElements('form').first;
+
+    final titleNode = form.findElements('title').isNotEmpty
+      ? form.findElements('title').first.text
+      : "Bez názvu";
 
     List<Map<String, dynamic>> loadedQuestions = [];
 
@@ -75,6 +78,7 @@ class _FormBuilderPackageState extends State<FormBuilderPackage> {
     });
 
     setState(() {
+      _formTitle = titleNode;
       questions = loadedQuestions;
     });
   }
@@ -309,7 +313,7 @@ class _FormBuilderPackageState extends State<FormBuilderPackage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.formTitle,
+         _formTitle,
           style: const TextStyle(
               color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
         ),
