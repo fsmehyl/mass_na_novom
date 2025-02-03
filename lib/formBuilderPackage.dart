@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'dart:io';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:xml/xml.dart' as xml;
 import 'graph.dart';
@@ -29,7 +30,8 @@ class _FormBuilderPackageState extends State<FormBuilderPackage> {
   }
 
   Future<void> _loadQuestions() async {
-    final data = await rootBundle.loadString(widget.xmlFilePath);
+    final file = File(widget.xmlFilePath);
+    final data = await file.readAsString();
     final document = xml.XmlDocument.parse(data);
     final form = document.findAllElements('form').first;
 
