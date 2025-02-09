@@ -37,7 +37,8 @@ Future<void> _pickXmlFile() async {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-          backgroundColor: Colors.blue, title: const Text('Vlož XML formulár')),
+          backgroundColor: Colors.blue, title: const Text('Vlož XML formulár',
+          style: TextStyle(color: Colors.white),)),
       body: Column(
         children: [
           const SizedBox(height: 30),

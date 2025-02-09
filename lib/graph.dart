@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'home_page.dart';
+import 'package:intl/intl.dart';
 
 class HorizontalBarChartWithLevels extends StatefulWidget {
   final List<double> values;
@@ -70,10 +71,15 @@ class _HorizontalBarChartWithLevelsState
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: widget.answers.entries.map((entry) {
+                        String displayValue = entry.value.toString();
+                        if (entry.value is DateTime) {
+                          displayValue = DateFormat('dd. MMMM yyyy', 'sk')
+                              .format(entry.value as DateTime);
+                        }
                         return Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4.0),
                           child: Text(
-                            '${entry.key}: ${entry.value}',
+                            displayValue,
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 16,
@@ -82,6 +88,9 @@ class _HorizontalBarChartWithLevelsState
                           ),
                         );
                       }).toList(),
+                    ),
+                    const Divider(
+                      color: Colors.white,
                     ),
                   ],
                 ),

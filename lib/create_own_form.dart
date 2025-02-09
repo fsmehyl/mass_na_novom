@@ -11,6 +11,7 @@ class CreateFormPage extends StatefulWidget {
 class _CreateFormPageState extends State<CreateFormPage> {
   List<Map<String, dynamic>> customQuestions = [];
 
+
   void _addQuestion(Map<String, dynamic> question) {
     setState(() {
       customQuestions.add(question);
@@ -23,6 +24,7 @@ class _CreateFormPageState extends State<CreateFormPage> {
     builder.element('form', nest: () {
       for (var question in customQuestions) {
         builder.element('question', nest: () {
+          builder.element('id', nest: question['id'].toString());
           builder.element('text', nest: question['text']);
           builder.element('type', nest: question['type']);
           if (question['options'] != null) {
@@ -57,7 +59,10 @@ class _CreateFormPageState extends State<CreateFormPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-          backgroundColor: Colors.blue, title: const Text('Vytvoriť formulár')),
+          backgroundColor: Colors.blue, title: const Text('Vytvoriť formulár',
+          style: TextStyle(
+            color: Colors.white,
+          ),)),
       body: Column(
         children: [
           Expanded(
@@ -90,6 +95,9 @@ class _CreateFormPageState extends State<CreateFormPage> {
             },
             child: const Text('Pridať otázku'),
           ),
+
+          SizedBox(height: 15,),
+
           if (customQuestions.isNotEmpty)
             ElevatedButton(
               onPressed: () async {
@@ -113,6 +121,7 @@ class AddQuestionPage extends StatefulWidget {
 }
 
 class _AddQuestionPageState extends State<AddQuestionPage> {
+  int counter = 1;
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _questionController = TextEditingController();
   String _selectedType = 'text';
@@ -193,6 +202,7 @@ class _AddQuestionPageState extends State<AddQuestionPage> {
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
                     widget.onSubmit({
+                      'id': counter,
                       'text': _questionController.text,
                       'type': _selectedType,
                       'options': _options,

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import 'dart:io';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
+import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:xml/xml.dart' as xml;
 import 'graph.dart';
+import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
+
 
 class FormBuilderPackage extends StatefulWidget {
   final String xmlFilePath;
@@ -27,6 +30,9 @@ class _FormBuilderPackageState extends State<FormBuilderPackage> {
   void initState() {
     super.initState();
     _loadQuestions();
+    initializeDateFormatting('sk', null).then((_) {
+    // Dátumové dáta sú inicializované, môžete pokračovať
+  });
   }
 
   Future<void> _loadQuestions() async {
@@ -144,6 +150,7 @@ class _FormBuilderPackageState extends State<FormBuilderPackage> {
                 contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16.0, vertical: 12.0),
               ),
+              format: DateFormat('dd. MMMM yyyy', 'sk'),
             ),
           );
         case 'time':
