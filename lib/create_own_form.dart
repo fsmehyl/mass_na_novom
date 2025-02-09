@@ -27,19 +27,33 @@ class _CreateFormPageState extends State<CreateFormPage> {
     builder.element('form', nest: () {
       for (var question in customQuestions) {
         builder.element('question', nest: () {
-          builder.element('id', nest: question['id']);
+          builder.element('id', nest: question['id'].toString());
           builder.element('text', nest: question['text']);
           builder.element('type', nest: question['type']);
           if (question['options'] != null) {
             builder.element('options', nest: () {
               for (var option in question['options']) {
-                builder.element('option', nest: option['text']);
+                builder.element(
+                  'option',
+                  attributes: {
+                    'category1': 'SEX',
+                    'weight1': option['SEX']!,
+                    'category2': 'FYZ',
+                    'weight2': option['FYZ']!,
+                    'category3': 'PSY',
+                    'weight3': option['PSY']!,
+                    'category4': 'ZAN',
+                    'weight4': option['ZAN']!,
+                  },
+                  nest: option['text'],
+                );
               }
             });
           }
         });
       }
     });
+
     final xmlDocument = builder.buildDocument();
     final xmlString = xmlDocument.toXmlString(pretty: true);
 
@@ -111,7 +125,7 @@ class _CreateFormPageState extends State<CreateFormPage> {
               },
               child: const Text('Uložiť formulár'),
             ),
-            SizedBox(
+          SizedBox(
             height: 15,
           ),
         ],
@@ -130,15 +144,14 @@ class AddQuestionPage extends StatefulWidget {
 }
 
 class _AddQuestionPageState extends State<AddQuestionPage> {
-  
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _questionController = TextEditingController();
   String _selectedType = 'text';
   List<Map<String, String>> _options = [];
 
-  void _addOption(String text) {
+  void _addOption(Map<String, String> option) {
     setState(() {
-      _options.add({'text': text});
+      _options.add(option);
     });
   }
 
@@ -217,7 +230,6 @@ class _AddQuestionPageState extends State<AddQuestionPage> {
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
                     widget.onSubmit({
-                    
                       'text': _questionController.text,
                       'type': _selectedType,
                       'options': _options,
@@ -235,25 +247,56 @@ class _AddQuestionPageState extends State<AddQuestionPage> {
   }
 
   void _showAddOptionDialog(BuildContext context) {
-    final TextEditingController optionController = TextEditingController();
+    final optionController = TextEditingController();
+    final categoryControllers =
+        List.generate(4, (_) => TextEditingController());
+    final categories = ['SEX', 'FYZ', 'PSY', 'ZAN'];
+
     showDialog(
       context: context,
       builder: (ctx) {
         return AlertDialog(
           title: const Text('Pridať možnosť'),
-          content: TextFormField(
-            controller: optionController,
-            decoration: const InputDecoration(labelText: 'Text možnosti'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: optionController,
+                decoration: InputDecoration(labelText: 'Text možnosti'),
+              ),
+              for (int i = 0; i < categories.length; i++)
+                TextField(
+                  controller: categoryControllers[i],
+                  decoration: InputDecoration(
+                    labelText: 'Váha pre ${categories[i]}',
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+            ],
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
+              onPressed: () => Navigator.pop(ctx),
               child: const Text('Zrušiť'),
             ),
             TextButton(
               onPressed: () {
-                _addOption(optionController.text);
-                Navigator.of(ctx).pop();
+                _addOption({
+                  'text': optionController.text,
+                  'SEX': categoryControllers[0].text.isEmpty
+                      ? '0'
+                      : categoryControllers[0].text,
+                  'FYZ': categoryControllers[1].text.isEmpty
+                      ? '0'
+                      : categoryControllers[1].text,
+                  'PSY': categoryControllers[2].text.isEmpty
+                      ? '0'
+                      : categoryControllers[2].text,
+                  'ZAN': categoryControllers[3].text.isEmpty
+                      ? '0'
+                      : categoryControllers[3].text,
+                });
+                Navigator.pop(ctx);
               },
               child: const Text('Pridať'),
             ),
