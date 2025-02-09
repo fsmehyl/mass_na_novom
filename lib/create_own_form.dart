@@ -5,16 +5,19 @@ import 'package:xml/xml.dart' as xml;
 
 class CreateFormPage extends StatefulWidget {
   @override
-  _CreateFormPageState createState() => _CreateFormPageState();
+  State<CreateFormPage> createState() => _CreateFormPageState();
 }
 
 class _CreateFormPageState extends State<CreateFormPage> {
   List<Map<String, dynamic>> customQuestions = [];
 
+  int counter = 1;
 
   void _addQuestion(Map<String, dynamic> question) {
     setState(() {
+      question['id'] = counter;
       customQuestions.add(question);
+      counter++;
     });
   }
 
@@ -24,7 +27,7 @@ class _CreateFormPageState extends State<CreateFormPage> {
     builder.element('form', nest: () {
       for (var question in customQuestions) {
         builder.element('question', nest: () {
-          builder.element('id', nest: question['id'].toString());
+          builder.element('id', nest: question['id']);
           builder.element('text', nest: question['text']);
           builder.element('type', nest: question['type']);
           if (question['options'] != null) {
@@ -59,10 +62,13 @@ class _CreateFormPageState extends State<CreateFormPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-          backgroundColor: Colors.blue, title: const Text('Vytvoriť formulár',
-          style: TextStyle(
-            color: Colors.white,
-          ),)),
+          backgroundColor: Colors.blue,
+          title: const Text(
+            'Vytvoriť formulár',
+            style: TextStyle(
+              color: Colors.white,
+            ),
+          )),
       body: Column(
         children: [
           Expanded(
@@ -95,9 +101,9 @@ class _CreateFormPageState extends State<CreateFormPage> {
             },
             child: const Text('Pridať otázku'),
           ),
-
-          SizedBox(height: 15,),
-
+          SizedBox(
+            height: 15,
+          ),
           if (customQuestions.isNotEmpty)
             ElevatedButton(
               onPressed: () async {
@@ -105,6 +111,9 @@ class _CreateFormPageState extends State<CreateFormPage> {
               },
               child: const Text('Uložiť formulár'),
             ),
+            SizedBox(
+            height: 15,
+          ),
         ],
       ),
     );
@@ -121,7 +130,7 @@ class AddQuestionPage extends StatefulWidget {
 }
 
 class _AddQuestionPageState extends State<AddQuestionPage> {
-  int counter = 1;
+  
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _questionController = TextEditingController();
   String _selectedType = 'text';
@@ -136,7 +145,13 @@ class _AddQuestionPageState extends State<AddQuestionPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Pridať otázku')),
+      appBar: AppBar(
+        title: const Text(
+          'Pridať otázku',
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: Colors.blue,
+      ),
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -202,7 +217,7 @@ class _AddQuestionPageState extends State<AddQuestionPage> {
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
                     widget.onSubmit({
-                      'id': counter,
+                    
                       'text': _questionController.text,
                       'type': _selectedType,
                       'options': _options,
