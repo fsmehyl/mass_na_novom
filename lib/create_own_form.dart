@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
 import 'package:xml/xml.dart' as xml;
+import 'package:permission_handler/permission_handler.dart';
+import 'package:file_picker/file_picker.dart';
 
 class CreateFormPage extends StatefulWidget {
   @override
@@ -57,20 +58,45 @@ class _CreateFormPageState extends State<CreateFormPage> {
     final xmlDocument = builder.buildDocument();
     final xmlString = xmlDocument.toXmlString(pretty: true);
 
-    try {
-      final directory = await getApplicationDocumentsDirectory();
-      final filePath = '${directory.path}/custom_form.xml';
-      final file = File(filePath);
-      await file.writeAsString(xmlString);
+try {
+    // Požiadaj o povolenie na zápis do úložiska
+    PermissionStatus status = await Permission.storage.request();
+
+    // Skontroluj, či bolo povolenie udelené
+    if (!status.isGranted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Formulár úspešne uložený: $filePath')),
+        SnackBar(content: Text('Nemáš povolenie na zápis do úložiska')),
       );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Chyba pri ukladaní: $e')),
-      );
+      return;
     }
+
+    // Otvorí dialóg na výber priečinka
+    final result = await FilePicker.platform.getDirectoryPath();
+
+    if (result == null) {
+      // Používateľ nevybral priečinok
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nevybral si priečinok na uloženie súboru')),
+      );
+      return;
+    }
+
+    // Vytvorí cestu k súboru v zvolenom priečinku
+    final filePath = '$result/custom_form.xml';
+    final file = File(filePath);
+
+    // Zapíše XML obsah do súboru
+    await file.writeAsString(xmlString);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Formulár úspešne uložený: $filePath')),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Chyba pri ukladaní: $e')),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {
