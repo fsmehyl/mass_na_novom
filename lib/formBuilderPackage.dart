@@ -9,6 +9,7 @@ import 'package:intl/date_symbol_data_local.dart';
 
 
 class FormBuilderPackage extends StatefulWidget {
+  
   final String xmlFilePath;
 
   const FormBuilderPackage({
@@ -31,7 +32,7 @@ class _FormBuilderPackageState extends State<FormBuilderPackage> {
     super.initState();
     _loadQuestions();
     initializeDateFormatting('sk', null).then((_) {
-    // Dátumové dáta sú inicializované, môžete pokračovať
+    
   });
   }
 

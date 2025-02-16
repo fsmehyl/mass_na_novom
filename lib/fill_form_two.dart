@@ -18,8 +18,8 @@ class _FillFormTwoState extends State<FillFormTwo> {
   @override
   Widget build(BuildContext context) {
     return FormBuilder(
-      xmlFilePath: 'assets/xml_forms/form_two.xml', // Uveďte cestu k vášmu XML súboru
-      formTitle: 'NPNDVD', // Nastavte názov formulára
+      xmlFilePath: 'assets/xml_forms/form_two.xml',
+      formTitle: 'Rôzne prípady detí do 5 rokov',
     );
   }
 }

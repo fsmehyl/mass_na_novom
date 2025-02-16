@@ -49,7 +49,7 @@ class MyHomePage extends StatelessWidget {
                 // Prvá karta
                 _buildCard(
                   title: 'Rôzne prípady detí do 10 rokov',
-                  description: 'Test na vyhodnotenie rizík u detí -10 rokov',
+                  description: 'Fomulár s použitím package',
                   icon: Icons.article_outlined,
                   onTap: () {
                     Navigator.push(
@@ -76,8 +76,8 @@ class MyHomePage extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 _buildCard(
-                  title: 'Formulár bez package',
-                  description: 'Možnosti využitia rôznych typov otázok',
+                  title: 'Rôzne prípady detí do 5 rokov',
+                  description: 'Fomulár bez použitia package',
                   icon: Icons.grading,
                   onTap: () {
                     Navigator.push(

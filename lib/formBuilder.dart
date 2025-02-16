@@ -1,9 +1,9 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
-import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 import 'package:xml/xml.dart' as xml;
-import 'home_page.dart';
+import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'graph.dart';
 
 class FormBuilder extends StatefulWidget {
   final String xmlFilePath;
@@ -18,34 +18,59 @@ class FormBuilder extends StatefulWidget {
 class _FormBuilderState extends State<FormBuilder> {
   List<Map<String, dynamic>> questions = [];
   Map<String, dynamic> answers = {};
+  String _formTitle = 'Načítava sa...';
+  final _formKey = GlobalKey<FormState>(); // Pridané pre správu stavu formulára
 
   @override
   void initState() {
     super.initState();
     _loadQuestions();
+    initializeDateFormatting('sk', null).then((_) {});
   }
 
   Future<void> _loadQuestions() async {
-    final data = await rootBundle.loadString(widget.xmlFilePath);
+    final file = File(widget.xmlFilePath);
+    final data = await file.readAsString();
     final document = xml.XmlDocument.parse(data);
     final form = document.findAllElements('form').first;
+
+    final titleNode = form.findElements('title').isNotEmpty
+      ? form.findElements('title').first.text
+      : "Bez názvu";
+
+    List<Map<String, dynamic>> loadedQuestions = [];
 
     form.findAllElements('question').forEach((questionNode) {
       final id = questionNode.findElements('id').first.text;
       final text = questionNode.findElements('text').first.text;
       final type = questionNode.findElements('type').first.text;
-      List<String> options = [];
+      List<Map<String, dynamic>> options = [];
 
-      if (type == 'radio' || type == 'checkbox' || type == 'select') {
+      if (type == 'radio' || type == 'select') {
         options = questionNode
             .findElements('options')
             .first
             .findElements('option')
-            .map((optionNode) => optionNode.text)
-            .toList();
+            .map((optionNode) {
+          // Extract categories and weights
+          Map<String, double> categoryWeights = {};
+          for (int i = 1; i <= 4; i++) {
+            final category = optionNode.getAttribute('category$i');
+            final weight =
+                double.tryParse(optionNode.getAttribute('weight$i') ?? '0.0') ??
+                    0.0;
+            if (category != null && category.isNotEmpty) {
+              categoryWeights[category] = weight;
+            }
+          }
+          return {
+            'text': optionNode.text.trim(),
+            'categoryWeights': categoryWeights,
+          };
+        }).toList();
       }
 
-      questions.add({
+      loadedQuestions.add({
         'id': id,
         'text': text,
         'type': type,
@@ -53,132 +78,142 @@ class _FormBuilderState extends State<FormBuilder> {
       });
     });
 
-    setState(() {});
-  }
-
-  Future<void> _saveForm() async {
-    final builder = xml.XmlBuilder();
-    builder.processing('xml', 'version="1.0" encoding="UTF-8"');
-    builder.element('form', nest: () {
-      for (var question in questions) {
-        builder.element('question', nest: () {
-          builder.element('id', nest: question['id']);
-          builder.element('answer', nest: answers[question['id']] ?? '');
-        });
-      }
+    setState(() {
+      _formTitle = titleNode;
+      questions = loadedQuestions;
     });
+  }
 
-    final document = builder.buildDocument();
-
-    Directory? directory;
-    if (Platform.isAndroid) {
-      directory = await getExternalStorageDirectory();
-    } else if (Platform.isIOS || Platform.isMacOS) {
-      directory = await getApplicationDocumentsDirectory();
-    } else if (Platform.isWindows || Platform.isLinux) {
-      directory = await getApplicationSupportDirectory();
-    } else {
-      directory = null;
-    }
-
-    if (directory != null) {
-      final filePath = '${directory.path}/form_data.xml';
-      final file = File(filePath);
-
-      // Zápis súboru
-      await file.writeAsString(document.toXmlString(pretty: true));
-
-      print('Súbor uložený na: $filePath');
-
-      // Načítanie a zobrazenie obsahu súboru
-      final savedData = await file.readAsString();
-      _showFileContent(savedData);
-    } else {
-      print('Nepodarilo sa získať adresár pre uloženie súboru.');
+  void _collectAnswers() {
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save(); // Uloží hodnoty do mapy answers
+      print(answers); // Výpis odpovedí do konzoly
     }
   }
 
-  void _showFileContent(String content) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Obsah súboru'),
-          content: SingleChildScrollView(
-            child: Text(content),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('OK'),
-              onPressed: () {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(
-                    builder: (context) => const MyHomePage(title: 'M.A.S.S.'),
-                  ),
-                  (route) => false, // Odstráni všetky predchádzajúce stránky
-                );
-              },
-            ),
-          ],
-        );
-      },
+void _calculateCategoryScores() {
+  if (_formKey.currentState!.validate()) {
+    _formKey.currentState!.save(); // Uloží hodnoty do mapy answers
+
+    // Initialize category scores
+    Map<String, double> categoryScores = {};
+
+    for (var question in questions) {
+      final questionId = question['id'];
+      final selectedAnswer = answers[questionId];
+
+      if (selectedAnswer != null) {
+        if (question['type'] == 'radio' || question['type'] == 'select') {
+          // Pre rádio a select otázky
+          final option = question['options'].firstWhere(
+            (opt) => opt['text'] == selectedAnswer,
+            orElse: () => <String, Object>{}, // Explicitne definovaný typ
+          );
+
+          if (option.isNotEmpty) {
+            final categoryWeights = option['categoryWeights'] as Map<String, double>;
+            categoryWeights.forEach((category, weight) {
+              categoryScores[category] = (categoryScores[category] ?? 0.0) + weight;
+            });
+          }
+        } else if (question['type'] == 'checkbox') {
+          // Pre checkbox otázky
+          final selectedOptions = selectedAnswer as List<String>;
+          for (var optionText in selectedOptions) {
+            final option = question['options'].firstWhere(
+              (opt) => opt['text'] == optionText,
+              orElse: () => <String, Object>{}, // Explicitne definovaný typ
+            );
+
+            if (option.isNotEmpty) {
+              final categoryWeights = option['categoryWeights'] as Map<String, double>;
+              categoryWeights.forEach((category, weight) {
+                categoryScores[category] = (categoryScores[category] ?? 0.0) + weight;
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Passing answers to graph.dart and showing category scores
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => HorizontalBarChartWithLevels(
+          values: categoryScores.values.toList(),
+          answers: answers, // Send answers to the graph page
+        ),
+      ),
+    );
+  } else {
+    // Ak formulár nie je platný, zobrazte upozornenie
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Prosím, vyplňte všetky povinné polia.')),
     );
   }
+}
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.formTitle,
-            style: const TextStyle(color: Colors.purple)),
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 20.0,
+          fontWeight: FontWeight.bold,
+           )),
+           backgroundColor: Colors.deepPurple,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Column(
-                children: questions.map((question) {
-                  switch (question['type']) {
-                    case 'text':
-                      return _buildTextField(question);
-                    case 'textarea':
-                      return _buildTextareaField(question);
-                    case 'radio':
-                      return _buildRadioField(question);
-                    case 'checkbox':
-                      return _buildCheckboxField(question);
-                    case 'select':
-                      return _buildSelectField(question);
-                    default:
-                      return const SizedBox.shrink();
-                  }
-                }).toList(),
-              ),
-              Column(
-                children: [
-                  SizedBox(
-                    child: ElevatedButton.icon(
-                      onPressed: _saveForm, // Save form data to XML
-                      icon: const Icon(Icons.send),
-                      label: const Column(
-                        children: [
-                          SizedBox(height: 5),
-                          Text(
-                            'Kliknite pre zber dát...',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontStyle: FontStyle.italic,
+        child: Form(
+          key: _formKey, // Priradenie GlobalKey k formuláru
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Column(
+                  children: questions.map((question) {
+                    switch (question['type']) {
+                      case 'text':
+                        return _buildTextField(question);
+                      case 'textarea':
+                        return _buildTextareaField(question);
+                      case 'radio':
+                        return _buildRadioField(question);
+                      case 'checkbox':
+                        return _buildCheckboxField(question);
+                      case 'select':
+                        return _buildSelectField(question);
+                      default:
+                        return const SizedBox.shrink();
+                    }
+                  }).toList(),
+                ),
+                Column(
+                  children: [
+                    SizedBox(
+                      child: ElevatedButton(
+                        onPressed: _calculateCategoryScores, // Uloženie dát
+                        child: Column(
+                          children: [
+                            SizedBox(height: 5),
+                            Text(
+                              'Kliknite pre zber dát...',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontStyle: FontStyle.italic,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -193,14 +228,20 @@ class _FormBuilderState extends State<FormBuilder> {
       children: [
         Text(question['text'],
             style: const TextStyle(fontWeight: FontWeight.bold)),
-        TextField(
+        TextFormField(
           maxLines: 1,
-          onChanged: (value) {
+          onSaved: (value) {
             answers[question['id']] = value;
           },
           decoration: const InputDecoration(
             border: OutlineInputBorder(),
           ),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Toto pole je povinné';
+            }
+            return null;
+          },
         ),
         const SizedBox(height: 16),
       ],
@@ -213,15 +254,20 @@ class _FormBuilderState extends State<FormBuilder> {
       children: [
         Text(question['text'],
             style: const TextStyle(fontWeight: FontWeight.bold)),
-        TextField(
-          maxLines:
-              4, // Tento WIDGET má akurát väčšie textové pole za pomoci tohto príkazu
-          onChanged: (value) {
+        TextFormField(
+          maxLines: 4,
+          onSaved: (value) {
             answers[question['id']] = value;
           },
           decoration: const InputDecoration(
             border: OutlineInputBorder(),
           ),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Toto pole je povinné';
+            }
+            return null;
+          },
         ),
         const SizedBox(height: 16),
       ],
@@ -236,19 +282,20 @@ class _FormBuilderState extends State<FormBuilder> {
       children: [
         Text(question['text'],
             style: const TextStyle(fontWeight: FontWeight.bold)),
-        Row(
+        Column(
           children: question['options'].map<Widget>((option) {
             return Row(
               children: [
                 Radio(
-                    value: option,
-                    groupValue: answers[question['id']],
-                    onChanged: (value) {
-                      setState(() {
-                        answers[question['id']] = value;
-                      });
-                    }),
-                Text(option),
+                  value: option['text'],
+                  groupValue: answers[question['id']],
+                  onChanged: (value) {
+                    setState(() {
+                      answers[question['id']] = value;
+                    });
+                  },
+                ),
+                Text(option['text']),
               ],
             );
           }).toList(),
@@ -273,19 +320,19 @@ class _FormBuilderState extends State<FormBuilder> {
             return Row(
               children: [
                 Checkbox(
-                  value: answers[question['id']]?.contains(option) ?? false,
+                  value: answers[question['id']]?.contains(option['text']) ?? false,
                   onChanged: (value) {
                     setState(() {
                       if (value == true) {
                         answers[question['id']] =
-                            (answers[question['id']] ?? [])..add(option);
+                            (answers[question['id']] ?? [])..add(option['text']);
                       } else {
-                        answers[question['id']]?.remove(option);
+                        answers[question['id']]?.remove(option['text']);
                       }
                     });
                   },
                 ),
-                Text(option),
+                Text(option['text']),
               ],
             );
           }).toList(),
@@ -304,11 +351,11 @@ class _FormBuilderState extends State<FormBuilder> {
         Text(question['text'],
             style: const TextStyle(fontWeight: FontWeight.bold)),
         DropdownButtonFormField<String>(
-          items:
-              question['options'].map<DropdownMenuItem<String>>((String value) {
+          items: question['options']
+              .map<DropdownMenuItem<String>>((Map<String, dynamic> option) {
             return DropdownMenuItem<String>(
-              value: value,
-              child: Text(value),
+              value: option['text'],
+              child: Text(option['text']),
             );
           }).toList(),
           onChanged: (String? newValue) {
@@ -319,6 +366,12 @@ class _FormBuilderState extends State<FormBuilder> {
           decoration: const InputDecoration(
             border: OutlineInputBorder(),
           ),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Vyberte možnosť';
+            }
+            return null;
+          },
         ),
         const SizedBox(height: 16),
       ],
