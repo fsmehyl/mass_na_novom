@@ -6,6 +6,7 @@ import 'package:xml/xml.dart' as xml;
 import 'graph.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
 
 class FormBuilderPackage extends StatefulWidget {
@@ -37,8 +38,26 @@ class _FormBuilderPackageState extends State<FormBuilderPackage> {
   }
 
   Future<void> _loadQuestions() async {
-    final file = File(widget.xmlFilePath);
-    final data = await file.readAsString();
+    try {
+    String data;
+
+    // Načítanie súboru z assets alebo externého úložiska
+    if (widget.xmlFilePath.startsWith('assets/')) {
+      // Načítanie súboru z assets
+      data = await rootBundle.loadString(widget.xmlFilePath);
+    } else {
+      // Načítanie externého súboru
+      final file = File(widget.xmlFilePath);
+
+      // Skontrolujte, či súbor existuje
+      if (!await file.exists()) {
+        print('Súbor neexistuje na ceste: ${widget.xmlFilePath}');
+        return;
+      }
+
+      data = await file.readAsString();
+    }
+
     final document = xml.XmlDocument.parse(data);
     final form = document.findAllElements('form').first;
 
@@ -90,6 +109,9 @@ class _FormBuilderPackageState extends State<FormBuilderPackage> {
       _formTitle = titleNode;
       questions = loadedQuestions;
     });
+  } catch (e) {
+    print('Chyba pri načítaní otázok: $e');
+  }
   }
 
   void _collectAnswers() {
