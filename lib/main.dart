@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'home_page.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Permission.storage.request();
+  if (!kIsWeb) {
+    WidgetsFlutterBinding.ensureInitialized();
+    await Permission.storage.request();
+  }
   runApp(const MyApp());
 }
 

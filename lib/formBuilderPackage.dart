@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
@@ -8,9 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
-
 class FormBuilderPackage extends StatefulWidget {
-  
   final String xmlFilePath;
 
   const FormBuilderPackage({
@@ -32,86 +31,88 @@ class _FormBuilderPackageState extends State<FormBuilderPackage> {
   void initState() {
     super.initState();
     _loadQuestions();
-    initializeDateFormatting('sk', null).then((_) {
-    
-  });
+    initializeDateFormatting('sk', null).then((_) {});
   }
 
   Future<void> _loadQuestions() async {
     try {
-    String data;
+      String data;
 
-    // Načítanie súboru z assets alebo externého úložiska
-    if (widget.xmlFilePath.startsWith('assets/')) {
-      // Načítanie súboru z assets
-      data = await rootBundle.loadString(widget.xmlFilePath);
-    } else {
-      // Načítanie externého súboru
-      final file = File(widget.xmlFilePath);
+      // Načítanie súboru z assets alebo externého úložiska
+      if (widget.xmlFilePath.startsWith('assets/')) {
+        // Načítanie súboru z assets
+        data = await rootBundle.loadString(widget.xmlFilePath);
+      } else if (kIsWeb) {
 
-      // Skontrolujte, či súbor existuje
-      if (!await file.exists()) {
-        print('Súbor neexistuje na ceste: ${widget.xmlFilePath}');
-        return;
+         data = widget.xmlFilePath; 
+      }
+        else {
+        // Načítanie externého súboru
+        final file = File(widget.xmlFilePath);
+
+        // Skontrolujte, či súbor existuje
+        if (!await file.exists()) {
+          print('Súbor neexistuje na ceste: ${widget.xmlFilePath}');
+          return;
+        }
+
+        data = await file.readAsString();
       }
 
-      data = await file.readAsString();
-    }
+      final document = xml.XmlDocument.parse(data);
+      final form = document.findAllElements('form').first;
 
-    final document = xml.XmlDocument.parse(data);
-    final form = document.findAllElements('form').first;
+      final titleNode = form.findElements('title').isNotEmpty
+          ? form.findElements('title').first.text
+          : "Bez názvu";
 
-    final titleNode = form.findElements('title').isNotEmpty
-      ? form.findElements('title').first.text
-      : "Bez názvu";
+      List<Map<String, dynamic>> loadedQuestions = [];
 
-    List<Map<String, dynamic>> loadedQuestions = [];
+      form.findAllElements('question').forEach((questionNode) {
+        final id = questionNode.findElements('id').first.text;
+        final text = questionNode.findElements('text').first.text;
+        final type = questionNode.findElements('type').first.text;
+        List<Map<String, dynamic>> options = [];
 
-    form.findAllElements('question').forEach((questionNode) {
-      final id = questionNode.findElements('id').first.text;
-      final text = questionNode.findElements('text').first.text;
-      final type = questionNode.findElements('type').first.text;
-      List<Map<String, dynamic>> options = [];
-
-      if (type == 'radio' || type == 'select') {
-        options = questionNode
-            .findElements('options')
-            .first
-            .findElements('option')
-            .map((optionNode) {
-          // Extract categories and weights
-          Map<String, double> categoryWeights = {};
-          for (int i = 1; i <= 4; i++) {
-            final category = optionNode.getAttribute('category$i');
-            final weight =
-                double.tryParse(optionNode.getAttribute('weight$i') ?? '0.0') ??
-                    0.0;
-            if (category != null && category.isNotEmpty) {
-              categoryWeights[category] = weight;
+        if (type == 'radio' || type == 'select') {
+          options = questionNode
+              .findElements('options')
+              .first
+              .findElements('option')
+              .map((optionNode) {
+            // Extract categories and weights
+            Map<String, double> categoryWeights = {};
+            for (int i = 1; i <= 4; i++) {
+              final category = optionNode.getAttribute('category$i');
+              final weight = double.tryParse(
+                      optionNode.getAttribute('weight$i') ?? '0.0') ??
+                  0.0;
+              if (category != null && category.isNotEmpty) {
+                categoryWeights[category] = weight;
+              }
             }
-          }
-          return {
-            'text': optionNode.text.trim(),
-            'categoryWeights': categoryWeights,
-          };
-        }).toList();
-      }
+            return {
+              'text': optionNode.text.trim(),
+              'categoryWeights': categoryWeights,
+            };
+          }).toList();
+        }
 
-      loadedQuestions.add({
-        'id': id,
-        'text': text,
-        'type': type,
-        'options': options,
+        loadedQuestions.add({
+          'id': id,
+          'text': text,
+          'type': type,
+          'options': options,
+        });
       });
-    });
 
-    setState(() {
-      _formTitle = titleNode;
-      questions = loadedQuestions;
-    });
-  } catch (e) {
-    print('Chyba pri načítaní otázok: $e');
-  }
+      setState(() {
+        _formTitle = titleNode;
+        questions = loadedQuestions;
+      });
+    } catch (e) {
+      print('Chyba pri načítaní otázok: $e');
+    }
   }
 
   void _collectAnswers() {
@@ -141,22 +142,9 @@ class _FormBuilderPackageState extends State<FormBuilderPackage> {
                 contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16.0, vertical: 12.0),
               ),
-            ),
-          );
-        case 'number':
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12.0),
-            child: FormBuilderTextField(
-              name: question['id'],
-              decoration: InputDecoration(
-                labelText: question['text'],
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16.0, vertical: 12.0),
-              ),
-              keyboardType: TextInputType.number,
+              validator: FormBuilderValidators.compose([
+                FormBuilderValidators.required(errorText: 'Toto pole je povinné'),
+              ]),
             ),
           );
         case 'date':
@@ -174,6 +162,33 @@ class _FormBuilderPackageState extends State<FormBuilderPackage> {
                     horizontal: 16.0, vertical: 12.0),
               ),
               format: DateFormat('dd. MMMM yyyy', 'sk'),
+              validator: FormBuilderValidators.compose([
+                FormBuilderValidators.required(errorText: 'Vyberte dátum'),
+              ]),
+            ),
+          );
+        case 'mail':
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12.0),
+            child: FormBuilderTextField(
+              name: question['id'],
+              decoration: InputDecoration(
+                labelText: question['text'],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16.0, vertical: 12.0),
+              ),
+             validator: FormBuilderValidators.compose([
+                FormBuilderValidators.required(
+                    errorText: 'Toto pole je povinné'),
+                FormBuilderValidators.email(
+                  checkNullOrEmpty:  true,
+                  regex: RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$'),
+                  errorText: 'Zadajte platnú e-mailovú adresu'),
+              ]),
+
             ),
           );
         case 'time':
@@ -210,6 +225,9 @@ class _FormBuilderPackageState extends State<FormBuilderPackage> {
                       DropdownMenuItem<String>(
                           value: option['text'], child: Text(option['text'])))
                   .toList(),
+              validator: FormBuilderValidators.compose([
+                FormBuilderValidators.required(errorText: 'Vyberte možnosť'),
+              ]),
             ),
           );
         case 'radio':
@@ -231,6 +249,10 @@ class _FormBuilderPackageState extends State<FormBuilderPackage> {
                     ),
                   )
                   .toList(),
+              validator: FormBuilderValidators.compose([
+                FormBuilderValidators.required(
+                    errorText: 'Vyberte jednu možnosť'),
+              ]),
             ),
           );
         case 'checkbox':
@@ -345,7 +367,7 @@ class _FormBuilderPackageState extends State<FormBuilderPackage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-         _formTitle,
+          _formTitle,
           style: const TextStyle(
               color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
         ),

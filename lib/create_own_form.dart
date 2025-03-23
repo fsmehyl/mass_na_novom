@@ -3,98 +3,112 @@ import 'dart:io';
 import 'package:xml/xml.dart' as xml;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:universal_html/html.dart' as html;
+
+
+
 
 class CreateFormPage extends StatefulWidget {
   @override
   State<CreateFormPage> createState() => _CreateFormPageState();
+
 }
 
 class _CreateFormPageState extends State<CreateFormPage> {
+
+
+
   List<Map<String, dynamic>> customQuestions = [];
 
   int counter = 1;
 
   void _addQuestion(Map<String, dynamic> question) {
-    setState(() {
-      question['id'] = counter;
-      customQuestions.add(question);
-      counter++;
-    });
+    
+    question['id'] = counter;
+    customQuestions.add(question);
+    counter++;
+    setState(() {});
   }
 
-  Future<void> _saveFormAsXml() async {
-    final builder = xml.XmlBuilder();
-    builder.processing('xml', 'version="1.0" encoding="UTF-8"');
-    builder.element('form', nest: () {
-      for (var question in customQuestions) {
-        builder.element('question', nest: () {
-          builder.element('id', nest: question['id'].toString());
-          builder.element('text', nest: question['text']);
-          builder.element('type', nest: question['type']);
-          if (question['options'] != null) {
-            builder.element('options', nest: () {
-              for (var option in question['options']) {
-                builder.element(
-                  'option',
-                  attributes: {
-                    'category1': 'SEX',
-                    'weight1': option['SEX']!,
-                    'category2': 'FYZ',
-                    'weight2': option['FYZ']!,
-                    'category3': 'PSY',
-                    'weight3': option['PSY']!,
-                    'category4': 'ZAN',
-                    'weight4': option['ZAN']!,
-                  },
-                  nest: option['text'],
-                );
-              }
-            });
-          }
-        });
+
+ void saveFormAsXmlWeb(String xmlString) {
+  final blob = html.Blob([xmlString], 'application/xml');
+  final url = html.Url.createObjectUrlFromBlob(blob);
+  final anchor = html.AnchorElement(href: url)
+    ..setAttribute('download', 'custom_form.xml')
+    ..click();
+  html.Url.revokeObjectUrl(url);
+}
+
+Future<void> _saveFormAsXml() async {
+  final builder = xml.XmlBuilder();
+  builder.processing('xml', 'version="1.0" encoding="UTF-8"');
+  builder.element('form', nest: () {
+    for (var question in customQuestions) {
+      builder.element('question', nest: () {
+        builder.element('id', nest: question['id'].toString());
+        builder.element('text', nest: question['text']);
+        builder.element('type', nest: question['type']);
+        if (question['options'] != null) {
+          builder.element('options', nest: () {
+            for (var option in question['options']) {
+              builder.element(
+                'option',
+                attributes: {
+                  'category1': 'SEX',
+                  'weight1': option['SEX']!,
+                  'category2': 'FYZ',
+                  'weight2': option['FYZ']!,
+                  'category3': 'PSY',
+                  'weight3': option['PSY']!,
+                  'category4': 'ZAN',
+                  'weight4': option['ZAN']!,
+                },
+                nest: option['text'],
+              );
+            }
+          });
+        }
+      });
+    }
+  });
+
+  final xmlDocument = builder.buildDocument();
+  final xmlString = xmlDocument.toXmlString(pretty: true);
+
+  if (kIsWeb) {
+    saveFormAsXmlWeb(xmlString);
+  } else {
+    try {
+      PermissionStatus status = await Permission.storage.request();
+      if (!status.isGranted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Nemáš povolenie na zápis do úložiska')),
+        );
+        return;
       }
-    });
 
-    final xmlDocument = builder.buildDocument();
-    final xmlString = xmlDocument.toXmlString(pretty: true);
+      final result = await FilePicker.platform.getDirectoryPath();
+      if (result == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Nevybral si priečinok na uloženie súboru')),
+        );
+        return;
+      }
 
-try {
-    // Požiadaj o povolenie na zápis do úložiska
-    PermissionStatus status = await Permission.storage.request();
+      final filePath = '$result/custom_form.xml';
+      final file = File(filePath);
+      await file.writeAsString(xmlString);
 
-    // Skontroluj, či bolo povolenie udelené
-    if (!status.isGranted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Nemáš povolenie na zápis do úložiska')),
+        SnackBar(content: Text('Formulár úspešne uložený: $filePath')),
       );
-      return;
-    }
-
-    // Otvorí dialóg na výber priečinka
-    final result = await FilePicker.platform.getDirectoryPath();
-
-    if (result == null) {
-      // Používateľ nevybral priečinok
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Nevybral si priečinok na uloženie súboru')),
+        SnackBar(content: Text('Chyba pri ukladaní: $e')),
       );
-      return;
     }
-
-    // Vytvorí cestu k súboru v zvolenom priečinku
-    final filePath = '$result/custom_form.xml';
-    final file = File(filePath);
-
-    // Zapíše XML obsah do súboru
-    await file.writeAsString(xmlString);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Formulár úspešne uložený: $filePath')),
-    );
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Chyba pri ukladaní: $e')),
-    );
   }
 }
 
@@ -201,7 +215,7 @@ class _AddQuestionPageState extends State<AddQuestionPage> {
                 controller: _questionController,
                 decoration: const InputDecoration(labelText: 'Otázka'),
                 validator: (value) =>
-                    value != null && value.isNotEmpty ? null : 'Zadajte otázku',
+                    value != null && value.isNotEmpty ? null : 'Zadajte otázku!',
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(

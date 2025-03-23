@@ -1,5 +1,5 @@
 <form>
-<title>Prípady pre deti do 10 rokov</title>
+<title>Formulár</title>
 <question>
         <id>1</id>
         <text>Ako sa voláš?</text>
@@ -18,6 +18,11 @@
             <option>Muž</option>
             <option>Žena</option>
         </options>
+    </question>
+    <question>
+        <id>20</id>
+        <text>Zadaj svoj email</text>
+        <type>mail</type>
     </question>
     <question>
         <id>4</id>
@@ -111,7 +116,7 @@
     </question>
     <question>
         <id>13</id>
-        <text>Dieťa nenavštebuje lekára?</text>
+        <text>Dieťa nenavštevuje lekára?</text>
         <type>radio</type>
         <options>
            <option category3="PSY" weight3="4.44">Áno</option>

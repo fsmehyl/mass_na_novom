@@ -19,7 +19,6 @@ class _FillFormTwoState extends State<FillFormTwo> {
   Widget build(BuildContext context) {
     return FormBuilder(
       xmlFilePath: 'assets/xml_forms/form_two.xml',
-      formTitle: 'Rôzne prípady detí do 5 rokov',
     );
   }
 }

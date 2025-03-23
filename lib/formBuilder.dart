@@ -4,12 +4,13 @@ import 'package:xml/xml.dart' as xml;
 import 'package:intl/date_symbol_data_local.dart';
 import 'graph.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:intl/intl.dart';
 
 class FormBuilder extends StatefulWidget {
   final String xmlFilePath;
-  final String formTitle;
 
-  const FormBuilder({super.key, required this.xmlFilePath, required this.formTitle});
+
+  const FormBuilder({super.key, required this.xmlFilePath});
 
   @override
   _FormBuilderState createState() => _FormBuilderState();
@@ -20,6 +21,7 @@ class _FormBuilderState extends State<FormBuilder> {
   Map<String, dynamic> answers = {};
   String _formTitle = 'Načítava sa...';
   final _formKey = GlobalKey<FormState>(); // Pridané pre správu stavu formulára
+  DateTime? _selectedDate;
 
   @override
   void initState() {
@@ -116,6 +118,8 @@ void _calculateCategoryScores() {
   if (_formKey.currentState!.validate()) {
     _formKey.currentState!.save(); // Uloží hodnoty do mapy answers
 
+
+
     // Initialize category scores
     Map<String, double> categoryScores = {};
 
@@ -178,18 +182,18 @@ void _calculateCategoryScores() {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.formTitle,
+        title: Text(_formTitle,
         style: TextStyle(
           color: Colors.white,
           fontSize: 20.0,
           fontWeight: FontWeight.bold,
            )),
-           backgroundColor: Colors.deepPurple,
+           backgroundColor: Colors.blue,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
-          key: _formKey, // Priradenie GlobalKey k formuláru
+          key: _formKey,
           child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -199,14 +203,14 @@ void _calculateCategoryScores() {
                     switch (question['type']) {
                       case 'text':
                         return _buildTextField(question);
-                      case 'textarea':
-                        return _buildTextareaField(question);
                       case 'radio':
                         return _buildRadioField(question);
-                      case 'checkbox':
-                        return _buildCheckboxField(question);
                       case 'select':
                         return _buildSelectField(question);
+                      case 'date':
+                        return _buildDateField(question);
+                      case 'mail':
+                        return _buildMailField(question);
                       default:
                         return const SizedBox.shrink();
                     }
@@ -220,11 +224,13 @@ void _calculateCategoryScores() {
                         child: Column(
                           children: [
                             SizedBox(height: 5),
-                            Text(
-                              'Kliknite pre zber dát...',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontStyle: FontStyle.italic,
+                            Center(
+                              child: Text(
+                                'Pozri výsledky',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontStyle: FontStyle.italic,
+                                ),
                               ),
                             ),
                           ],
@@ -241,73 +247,139 @@ void _calculateCategoryScores() {
     );
   }
 
-  ///////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+
+Widget _buildMailField(Map<String, dynamic> question) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 12.0),
+    child: TextFormField(
+      onSaved: (value) {
+        answers[question['id']] = value;
+      },
+      decoration: InputDecoration(
+        labelText: question['text'],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16.0, vertical: 12.0),
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Toto pole je povinné';
+        }
+        final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+        if (!emailRegex.hasMatch(value)) {
+          return 'Zadajte platnú e-mailovú adresu';
+        }
+        return null;
+      },
+    ),
+  );
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
 
   Widget _buildTextField(Map<String, dynamic> question) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(question['text'],
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-        TextFormField(
-          maxLines: 1,
-          onSaved: (value) {
-            answers[question['id']] = value;
-          },
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-          ),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Toto pole je povinné';
-            }
-            return null;
-          },
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      TextFormField(
+        maxLines: 1,
+        onSaved: (value) {
+          answers[question['id']] = value;
+        },
+        decoration: InputDecoration(
+          labelText: question['text'],
+          border: const OutlineInputBorder(),
         ),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'Toto pole je povinné';
+          }
+          if (value.length < 3) {
+            return 'Text musí mať minimálne 3 znaky';
+          }
+          return null;
+        },
+        
+      ),
+      const SizedBox(height: 16),
+    ],
+  );
+}
 
-  Widget _buildTextareaField(Map<String, dynamic> question) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(question['text'],
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-        TextFormField(
-          maxLines: 4,
-          onSaved: (value) {
-            answers[question['id']] = value;
-          },
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-          ),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Toto pole je povinné';
-            }
-            return null;
-          },
+  ////////////////////////////////////////////////////////////////////////////////
+
+  Widget _buildDateField(Map<String, dynamic> question) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        question['text'],
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+      TextFormField(
+        readOnly: true, 
+        controller: TextEditingController(
+          text: _selectedDate != null
+              ? DateFormat('yyyy-MM-dd').format(_selectedDate!)
+              : '',
         ),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
+        decoration: const InputDecoration(
+          border: OutlineInputBorder(),
+        ),
+        onTap: () async {
+          
+          FocusScope.of(context).requestFocus(FocusNode());
 
-  ///////////////////////////////////////////////////////////////////////////////////
+          
+          final DateTime? pickedDate = await showDatePicker(
+            context: context,
+            initialDate: _selectedDate ?? DateTime.now(),
+            firstDate: DateTime(2000),
+            lastDate: DateTime(2101),
+          );
+
+          
+          if (pickedDate != null && pickedDate != _selectedDate) {
+            setState(() {
+              _selectedDate = pickedDate;
+              answers[question['id'] = DateFormat('yyyy-MM-dd').format(pickedDate)];
+            });
+          }
+        },
+        validator: (value) {
+          if (_selectedDate == null) {
+            return 'Toto pole je povinné';
+          }
+          return null;
+        },
+      ),
+      const SizedBox(height: 16),
+    ],
+  );
+}
+
+///////////////////////////////////////////////////////////////////////////////////////
+
+  
 
   Widget _buildRadioField(Map<String, dynamic> question) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(question['text'],
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-        Column(
-          children: question['options'].map<Widget>((option) {
-            return Row(
-              children: [
-                Radio(
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        question['text'],
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+      Column(
+        children: question['options'].map<Widget>((option) {
+          return Row(
+            children: [
+                  Radio(
+                  key: ValueKey(question['id']),
                   value: option['text'],
                   groupValue: answers[question['id']],
                   onChanged: (value) {
@@ -316,52 +388,19 @@ void _calculateCategoryScores() {
                     });
                   },
                 ),
-                Text(option['text']),
-              ],
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
+              Text(
+                option['text'],
+                style: const TextStyle(fontSize: 16),
+              ),
+            ],
+          );
+        }).toList(),
+      ),
+      const SizedBox(height: 16),
+    ],
+  );
+}
 
-  ///////////////////////////////////////////////////////////////////////////////////
-
-  Widget _buildCheckboxField(Map<String, dynamic> question) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          question['text'],
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        Column(
-          children: question['options'].map<Widget>((option) {
-            return Row(
-              children: [
-                Checkbox(
-                  value: answers[question['id']]?.contains(option['text']) ?? false,
-                  onChanged: (value) {
-                    setState(() {
-                      if (value == true) {
-                        answers[question['id']] =
-                            (answers[question['id']] ?? [])..add(option['text']);
-                      } else {
-                        answers[question['id']]?.remove(option['text']);
-                      }
-                    });
-                  },
-                ),
-                Text(option['text']),
-              ],
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
 
   ///////////////////////////////////////////////////////////////////////////////////
 
@@ -369,8 +408,6 @@ void _calculateCategoryScores() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(question['text'],
-            style: const TextStyle(fontWeight: FontWeight.bold)),
         DropdownButtonFormField<String>(
           items: question['options']
               .map<DropdownMenuItem<String>>((Map<String, dynamic> option) {
@@ -384,15 +421,15 @@ void _calculateCategoryScores() {
               answers[question['id']] = newValue;
             });
           },
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-          ),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Vyberte možnosť';
-            }
-            return null;
-          },
+          decoration: InputDecoration(
+                labelText: question['text'],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16.0, vertical: 12.0),
+              ),
+
         ),
         const SizedBox(height: 16),
       ],
