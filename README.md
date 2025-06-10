@@ -1,13 +1,15 @@
-Project M.A.S.S.:
+Project title : M.A.S.S. – Multiplatform application for social services / for rapid diagnostic testing in the field of social services
 
-Multiplatform Application for Social Services
+Date : 03/24 – 04/25
 
-developed by Filip Šmehyl with Flutter framework
+Short description : Development the core of a multiplatform application which in the future will be used by field workers to test socially vulnerable children (form/results shown in the graph). Also the possibility of creating your own form (forms are saved as xml files with the possibility of assigning weights to individual answers), or uploading an external one from the device
 
+Ordered / cooperated by : Bachelor's thesis
 
-This project is being developed for the needs of my bachelor's thesis, the abstract of which is written below:
+Position in team : Solo programmer
 
+Processed work part in details : I have worked with Flutter on both the front-end and back-end.
 
-abstract of bachelor's thesis:
+Operating system : Windows, Web, Android
 
-The aim of the bachelor's thesis is to design and implement a multiplatform prototype of an application enabling rapid diagnostic testing with a focus on the Flutter environment. The thesis contains a theoretical and practical part. The theoretical part is dedicated to the description of multiplatform applications, their advantages and disadvantages, as well as a description of several tools for multiplatform development. It also contains a description of the Flutter tool, its characteristics, functionalities, architecture and the distribution of widgets based on the state. The practical part is dedicated to the rough design of the system and the complete application. It also contains the specification and design of the user interface for the created prototype, an analysis of the possibility of creating forms, as well as a description of the code for the implementation of individual components. The conclusion of the practical part is dedicated to testing, the result of which is the successful operation of the application on three platforms: Windows, Web and Android.
+Used languages, software, tools and technologies : Flutter, Dart, VS code, lots of libraries (e.g. flutter_form_builder, fl_chart, permission_handler,…), Git
